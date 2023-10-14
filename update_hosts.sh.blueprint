@@ -1,0 +1,31 @@
+#!/bin/bash
+# y
+LOG_DIR="/var/log/mylogs"
+LOG_FILE="$LOG_DIR/update_hosts.log"
+HOSTS_FILE="/etc/hosts"
+HOSTNAME=localws
+
+[ -d "$LOG_DIR" ] || mkdir -p "$LOG_DIR"
+[ -e "$LOG_FILE" ] || touch "$LOG_FILE" && chmod 666 "$LOG_FILE"
+
+
+TIMESTAMP=$(date)
+
+OLD_IP=$(awk -v h="$HOSTNAME" '$2==h {print $1}' $HOSTS_FILE)
+LAN_IP=$(ip route get 1 | awk '{print $7}')
+
+echo -e "\n[$TIMESTAMP] TRIGGERING FOR ------ $LAN_IP " >> $LOG_FILE
+
+if [ "$OLD_IP" != "$LAN_IP" ]; then
+
+    echo "[$TIMESTAMP] LAN IP changed: "$OLD_IP" -> "$LAN_IP" >> $HOSTS_FILE"  >> $LOG_FILE
+
+    if grep -q "$HOSTNAME" $HOSTS_FILE; then
+        sed -i "s/^.*$HOSTNAME$/$LAN_IP $HOSTNAME/" $HOSTS_FILE
+        echo -e "[$TIMESTAMP] LAN IP replaced: $OLD_IP -> $LAN_IP >> $HOSTS_FILE" >> $LOG_FILE
+    else
+        echo "$LAN_IP $HOSTNAME" >> $HOSTS_FILE
+        echo -e "[$TIMESTAMP] LAN IP newly added: $OLD_IP -> $LAN_IP >> $HOSTS_FILE" >> $LOG_FILE
+    fi
+
+fi
